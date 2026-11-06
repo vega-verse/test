@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchForecast, validateConus } from './nws.js'
 import ForecastCharts from './Charts.jsx'
+import ModelAgreement from './ModelAgreement.jsx'
+
+// Leaflet is only downloaded when the map tab is opened.
+const RadarMap = lazy(() => import('./RadarMap.jsx'))
 import { compass, fmt, fmtIn } from './format.js'
 import { HOUR, accumulateHourly, hourBuckets, maxWithIndex, periodsInWindow, sampleHourly, sum, toImperial } from './timeseries.js'
+
+const VIEWS = { forecast: 'Forecast', map: 'Radar map' }
+const initialView = () => (new URLSearchParams(window.location.search).get('view') === 'map' ? 'map' : 'forecast')
 
 function initialCoords() {
   const q = new URLSearchParams(window.location.search)
@@ -75,6 +82,15 @@ function useTheme() {
 
 export default function App() {
   const [theme, toggleTheme] = useTheme()
+  const [view, setView] = useState(initialView)
+
+  const changeView = (v) => {
+    setView(v)
+    const url = new URL(window.location.href)
+    if (v === 'map') url.searchParams.set('view', 'map')
+    else url.searchParams.delete('view')
+    window.history.replaceState(null, '', url)
+  }
   const [input, setInput] = useState(initialCoords)
   const [state, setState] = useState({ status: 'idle' })
   const abortRef = useRef(null)
@@ -155,12 +171,31 @@ export default function App() {
         </button>
       </form>
 
+      <nav className="tabs" role="tablist" aria-label="View">
+        {Object.entries(VIEWS).map(([v, label]) => (
+          <button key={v} type="button" role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => changeView(v)}>
+            {label}
+          </button>
+        ))}
+      </nav>
+
       {state.status === 'error' && <p className="error">{state.error}</p>}
-      {state.status === 'ready' && <Forecast {...state} onRefresh={() => load(String(state.lat), String(state.lon))} />}
+      {view === 'forecast' && state.status === 'ready' && <Forecast {...state} onRefresh={() => load(String(state.lat), String(state.lon))} />}
+      {view === 'map' && (
+        <Suspense fallback={<p className="meta">Loading map…</p>}>
+          <RadarMap
+            lat={state.status === 'ready' ? state.lat : null}
+            lon={state.status === 'ready' ? state.lon : null}
+            timeZone={state.status === 'ready' ? state.data.timeZone : undefined}
+            theme={theme}
+          />
+        </Suspense>
+      )}
 
       <footer>
         Data: <a href="https://www.weather.gov/documentation/services-web-api">api.weather.gov</a> (NWS National Digital
-        Forecast Database). Personal-use tool, not an official forecast product.
+        Forecast Database); radar and HRRR model tiles from NOAA via the{' '}
+        <a href="https://mesonet.agron.iastate.edu/">Iowa Environmental Mesonet</a>. Personal-use tool, not an official forecast product.
       </footer>
     </main>
   )
@@ -220,6 +255,10 @@ export function Forecast({ data, lat, lon, fetchedAt, onRefresh }) {
 
       <h3>Next 24 hours</h3>
       <ForecastCharts rows={fc.rows} timeZone={tz} />
+
+      <h3>Model agreement</h3>
+      <p className="meta">Do the last six runs of NOAA's HRRR model agree on precipitation here? Columns where every run matches mean higher confidence.</p>
+      <ModelAgreement lat={lat} lon={lon} timeZone={tz} />
 
       <h3>Hourly table</h3>
       <div className="table-wrap">

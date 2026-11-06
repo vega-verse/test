@@ -1,0 +1,88 @@
+/* Startup splash. All classes are hfs- prefixed so they can't collide with app styles. */
+.hfs-root{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden;cursor:pointer;user-select:none;
+  font-family:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",sans-serif;color:#1d3446;
+  background:linear-gradient(180deg,#a8d8f0 0%,#e6f4fb 100%);transition:opacity .6s ease}
+.hfs-root.hfs-exit{opacity:0}
+.hfs-layer{position:absolute;inset:0;opacity:0;transition:opacity 1.2s ease;pointer-events:none}
+.hfs-layer-rain{background:linear-gradient(180deg,#5d6f80 0%,#b4bfc7 100%)}
+.hfs-layer-sun{background:linear-gradient(180deg,#5fbcf2 0%,#fff0c4 100%)}
+.hfs-rain .hfs-layer-rain,.hfs-sun .hfs-layer-sun{opacity:1}
+.hfs-scene{position:relative;width:min(520px,92vw);height:auto;overflow:hidden}
+.hfs-text{position:relative;text-align:center;width:min(340px,84vw)}
+.hfs-caption{font-size:15px;min-height:1.4em;margin:0 0 4px;opacity:.85;animation:hfs-fade .45s ease both}
+.hfs-name{font-size:26px;font-weight:700;letter-spacing:.02em;margin:0 0 14px}
+.hfs-bar{height:6px;border-radius:3px;background:rgba(29,52,70,.15);overflow:hidden}
+.hfs-bar>i{display:block;height:100%;width:0;border-radius:3px;background:#1d3446;animation:hfs-load 6.7s cubic-bezier(.3,.1,.3,1) forwards}
+.hfs-skip{position:absolute;bottom:18px;font-size:12px;opacity:.5}
+@keyframes hfs-fade{from{opacity:0;transform:translateY(4px)}to{opacity:.85;transform:none}}
+@keyframes hfs-load{to{width:100%}}
+
+.hfs-cloud-in{animation:hfs-cloud-in 1.4s ease-out both}
+.hfs-cloud-in.d2{animation-delay:.15s}
+.hfs-cloud-in.d3{animation-delay:.3s}
+@keyframes hfs-cloud-in{from{transform:translateX(-170px);opacity:0}to{transform:none;opacity:1}}
+.hfs-cloud-move{transition:transform 1.8s ease-in,opacity 1.6s ease-in}
+.hfs-sun .hfs-cloud-move{transform:translateX(300px);opacity:0}
+.hfs-sun .hfs-cloud-move.m2{transition-delay:.15s}
+.hfs-sun .hfs-cloud-move.m3{transition-delay:.3s}
+.hfs-rain .hfs-cloud-move{transform:translateY(6px)}
+.hfs-cloud-fill{fill:#fff;transition:fill 1.2s}
+.hfs-rain .hfs-cloud-fill{fill:#7d8b97}
+.hfs-hill{transition:filter 1.2s}
+.hfs-rain .hfs-hill{filter:saturate(.6) brightness(.85)}
+
+.hfs-sunball{transform-box:view-box;transform-origin:80px 55px;transform:translateY(40px) scale(.6);opacity:0;
+  transition:transform 1.4s cubic-bezier(.2,.8,.3,1.2) .3s,opacity 1s .3s}
+.hfs-sun .hfs-sunball{transform:none;opacity:1}
+.hfs-rays{transform-box:view-box;transform-origin:80px 55px;animation:hfs-spin 14s linear infinite}
+@keyframes hfs-spin{to{transform:rotate(360deg)}}
+
+.hfs-rainset{opacity:0;transition:opacity .8s}
+.hfs-rain .hfs-rainset{opacity:1}
+.hfs-drop{animation:hfs-fall .9s linear infinite}
+@keyframes hfs-fall{from{transform:translate(0,-40px)}to{transform:translate(-30px,300px)}}
+
+.hfs-horse{transform-box:view-box;transform-origin:186px 250px;animation:hfs-breathe 2.4s ease-in-out infinite}
+@keyframes hfs-breathe{50%{transform:scaleY(1.012)}}
+.hfs-tail{transform-box:view-box;transform-origin:124px 155px;animation:hfs-swish 2.6s ease-in-out infinite}
+.hfs-rain .hfs-tail{animation-duration:.8s}
+@keyframes hfs-swish{0%,100%{transform:rotate(0)}50%{transform:rotate(9deg)}}
+
+.hfs-neck{transform-box:view-box;transform-origin:232px 152px}
+.hfs-sniff .hfs-neck{animation:hfs-sniff 1.6s ease-in-out both}
+.hfs-think .hfs-neck{animation:hfs-ponder 1.6s ease-in-out both}
+.hfs-rain .hfs-neck{animation:hfs-droop 1s ease-in-out both}
+.hfs-sun .hfs-neck{animation:hfs-nod 1.3s ease-in-out both}
+@keyframes hfs-sniff{0%{transform:rotate(0)}25%{transform:rotate(-12deg)}40%{transform:rotate(-9deg)}55%{transform:rotate(-13deg)}70%{transform:rotate(-9deg)}85%,100%{transform:rotate(-12deg)}}
+@keyframes hfs-ponder{0%{transform:rotate(-12deg)}30%{transform:rotate(-4deg)}60%{transform:rotate(-7deg)}100%{transform:rotate(-5deg)}}
+@keyframes hfs-droop{from{transform:rotate(-5deg)}to{transform:rotate(8deg)}}
+@keyframes hfs-nod{0%{transform:rotate(-5deg)}25%{transform:rotate(4deg)}50%{transform:rotate(-8deg)}75%{transform:rotate(3deg)}100%{transform:rotate(-4deg)}}
+
+.hfs-ear{transform-box:fill-box;transform-origin:50% 100%}
+.hfs-sniff .hfs-ear{animation:hfs-twitch .5s ease-in-out 3}
+.hfs-think .hfs-ear.e1{animation:hfs-twitch .6s ease-in-out 2}
+.hfs-rain .hfs-ear{animation:hfs-pin .8s ease both}
+@keyframes hfs-twitch{50%{transform:rotate(16deg)}}
+@keyframes hfs-pin{to{transform:rotate(-38deg)}}
+
+.hfs-eye{transform-box:fill-box;transform-origin:center;animation:hfs-blink 3.2s infinite}
+@keyframes hfs-blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+
+.hfs-puff{opacity:0;transform-box:fill-box;transform-origin:center}
+.hfs-sniff .hfs-puff{animation:hfs-puff .6s ease-out infinite}
+.hfs-sniff .hfs-puff.p2{animation-delay:.2s}
+.hfs-sniff .hfs-puff.p3{animation-delay:.4s}
+@keyframes hfs-puff{0%{opacity:.85;transform:translate(0,0) scale(.4)}100%{opacity:0;transform:translate(14px,-6px) scale(1.5)}}
+
+.hfs-bubble{opacity:0;transform-box:view-box;transform-origin:316px 76px;transform:scale(.3);
+  transition:opacity .4s,transform .5s cubic-bezier(.2,.8,.3,1.3)}
+.hfs-think .hfs-bubble,.hfs-reveal .hfs-bubble,.hfs-exit .hfs-bubble{opacity:1;transform:none}
+.hfs-ico{opacity:0}
+.hfs-think .hfs-ico-sun{animation:hfs-flip .8s steps(1) infinite}
+.hfs-think .hfs-ico-rain{animation:hfs-flip .8s steps(1) .4s infinite}
+@keyframes hfs-flip{0%{opacity:1}50%{opacity:0}}
+.hfs-rain .hfs-ico-rain,.hfs-sun .hfs-ico-sun{opacity:1;transition:opacity .3s}
+
+@media (prefers-reduced-motion: reduce){
+  .hfs-root *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}

@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchForecast, validateConus } from './nws.js'
+import ForecastCharts from './Charts.jsx'
+import { compass, fmt, fmtIn } from './format.js'
 import { HOUR, accumulateHourly, hourBuckets, maxWithIndex, periodsInWindow, sampleHourly, sum, toImperial } from './timeseries.js'
-
-const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
-const compass = (deg) => (deg == null ? '' : COMPASS[Math.round(deg / 22.5) % 16])
-const fmt = (v, digits = 0) => (v == null ? '—' : v.toFixed(digits))
-const fmtIn = (v) => (v == null ? '—' : v < 0.005 && v > 0 ? '<0.01' : v.toFixed(2))
 
 function initialCoords() {
   const q = new URLSearchParams(window.location.search)
@@ -64,7 +61,20 @@ function buildForecast(data) {
   }
 }
 
+function useTheme() {
+  const [theme, setTheme] = useState(() => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'))
+  useEffect(() => {
+    if (theme === 'light') document.documentElement.dataset.theme = 'light'
+    else delete document.documentElement.dataset.theme
+    try {
+      localStorage.setItem('theme', theme)
+    } catch { /* storage blocked (e.g. private mode): theme just won't persist */ }
+  }, [theme])
+  return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
+}
+
 export default function App() {
+  const [theme, toggleTheme] = useTheme()
   const [input, setInput] = useState(initialCoords)
   const [state, setState] = useState({ status: 'idle' })
   const abortRef = useRef(null)
@@ -113,8 +123,13 @@ export default function App() {
   return (
     <main>
       <header>
-        <h1>24-Hour Precipitation &amp; Wind Forecast</h1>
-        <p className="sub">NOAA / National Weather Service gridded forecast for any point in the continental US</p>
+        <div>
+          <h1>24-Hour Precipitation &amp; Wind Forecast</h1>
+          <p className="sub">NOAA / National Weather Service gridded forecast for any point in the continental US</p>
+        </div>
+        <button type="button" className="secondary theme-toggle" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+          {theme === 'dark' ? '☀ Light' : '☾ Dark'}
+        </button>
       </header>
 
       <form
@@ -203,7 +218,10 @@ export function Forecast({ data, lat, lon, fetchedAt, onRefresh }) {
 
       {data.observation && <Observation obs={data.observation} fmt={fullFmt} />}
 
-      <h3>Hourly</h3>
+      <h3>Next 24 hours</h3>
+      <ForecastCharts rows={fc.rows} timeZone={tz} />
+
+      <h3>Hourly table</h3>
       <div className="table-wrap">
         <table>
           <thead>

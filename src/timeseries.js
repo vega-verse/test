@@ -74,9 +74,10 @@ const CONVERT = {
   'wmoUnit:kn': (v) => v * 1.150779, // -> mph
   'wmoUnit:mm': (v) => v / 25.4, // -> in
   'wmoUnit:m': (v) => v * 39.3701, // -> in
+  'wmoUnit:degC': (v) => (v * 9) / 5 + 32, // -> °F
 }
 
-/** Convert NWS metric values to mph / inches. Other units pass through unchanged. */
+/** Convert NWS metric values to mph / inches / °F. Other units pass through unchanged. */
 export function toImperial(uom, v) {
   if (v == null) return null
   const f = CONVERT[uom]
@@ -90,6 +91,15 @@ export function maxWithIndex(xs) {
   let best = null
   xs.forEach((x, i) => {
     if (x != null && (best == null || x > best.value)) best = { value: x, index: i }
+  })
+  return best
+}
+
+/** Min of non-null values with its index, or null if none. */
+export function minWithIndex(xs) {
+  let best = null
+  xs.forEach((x, i) => {
+    if (x != null && (best == null || x < best.value)) best = { value: x, index: i }
   })
   return best
 }

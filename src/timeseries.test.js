@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HOUR, accumulateHourly, hourBuckets, parseDuration, periodsInWindow, sampleHourly, toImperial } from './timeseries.js'
+import { HOUR, accumulateHourly, hourBuckets, minWithIndex, parseDuration, periodsInWindow, sampleHourly, toImperial } from './timeseries.js'
 
 const T0 = Date.parse('2026-11-06T12:00:00Z')
 
@@ -61,5 +61,15 @@ describe('toImperial', () => {
     expect(toImperial('wmoUnit:km_h-1', 100)).toBeCloseTo(62.1371)
     expect(toImperial('wmoUnit:percent', 40)).toBe(40)
     expect(toImperial('wmoUnit:mm', null)).toBeNull()
+    expect(toImperial('wmoUnit:degC', 0)).toBeCloseTo(32)
+    expect(toImperial('wmoUnit:degC', -40)).toBeCloseTo(-40)
+    expect(toImperial('wmoUnit:degC', 100)).toBeCloseTo(212)
+  })
+})
+
+describe('minWithIndex', () => {
+  it('skips nulls and returns the first minimum', () => {
+    expect(minWithIndex([null, 5, 3, 3, null])).toEqual({ value: 3, index: 2 })
+    expect(minWithIndex([null, null])).toBeNull()
   })
 })

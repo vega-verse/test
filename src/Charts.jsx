@@ -1,17 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { compass, fmt, fmtIn, fmtTick } from './format.js'
-import { maxWithIndex } from './timeseries.js'
+import { maxWithIndex, minWithIndex } from './timeseries.js'
 
-// Layout (px). One SVG, three stacked panels sharing an x-axis and a crosshair.
+// Layout (px). One SVG, four stacked panels sharing an x-axis and a crosshair.
 const PAD_L = 40
 const PAD_R = 14
 const L = {
-  pop: { title: 14, top: 26, bot: 86 },
-  qpf: { title: 116, top: 128, bot: 196 },
-  wind: { title: 226, top: 238, bot: 338 },
-  arrows: 356,
-  xLabels: 384,
-  height: 396,
+  temp: { title: 14, top: 30, bot: 110 },
+  pop: { title: 140, top: 152, bot: 212 },
+  qpf: { title: 242, top: 254, bot: 322 },
+  wind: { title: 352, top: 364, bot: 464 },
+  arrows: 482,
+  xLabels: 510,
+  height: 522,
+}
+
+/** Temperature axis: whole multiples of 5 with a span divisible by 10, so the mid tick is an integer. */
+function tempRange(vals) {
+  const xs = vals.filter((v) => v != null)
+  if (!xs.length) return { lo: 30, hi: 70 }
+  const lo = Math.floor((Math.min(...xs) - 2) / 5) * 5
+  let hi = Math.ceil((Math.max(...xs) + 2) / 5) * 5
+  hi = lo + Math.max(10, Math.ceil((hi - lo) / 10) * 10)
+  return { lo, hi }
 }
 
 /** Round up to 1/2/2.5/5 x 10^k. */
@@ -78,11 +89,19 @@ export default function ForecastCharts({ rows, timeZone }) {
   const xc = (i) => PAD_L + (i + 0.5) * bw
   const scale = ({ top, bot }, max) => (v) => bot - (v / max) * (bot - top)
 
+  const temp = rows.map((r) => r.temp)
+  const feels = rows.map((r) => r.feels)
   const pop = rows.map((r) => r.pop)
   const qpf = rows.map((r) => r.qpf)
   const wind = rows.map((r) => r.wind)
   const gust = rows.map((r) => r.gust)
 
+  const tempHigh = maxWithIndex(temp)
+  const tempLow = minWithIndex(temp)
+  const tr = tempRange([...temp, ...feels])
+  const yTemp = (v) => L.temp.bot - ((v - tr.lo) / (tr.hi - tr.lo)) * (L.temp.bot - L.temp.top)
+  // Only draw "feels like" when it differs noticeably from the air temperature somewhere.
+  const showFeels = rows.some((r) => r.temp != null && r.feels != null && Math.abs(r.temp - r.feels) >= 2)
   const popPeak = maxWithIndex(pop)
   const qpfTotal = qpf.reduce((a, v) => a + (v ?? 0), 0)
   const qpfMax = niceCeil(Math.max(0.1, ...qpf.map((v) => v ?? 0)))
@@ -132,6 +151,7 @@ export default function ForecastCharts({ rows, timeZone }) {
         {hover ? (
           <>
             <strong>{fmts.full.format(hover.t)}</strong>
+            <span><b>{fmt(hover.temp)}°F</b>{hover.feels != null && hover.feels !== hover.temp ? ` (feels ${fmt(hover.feels)}°)` : ''}</span>
             <span><b>{fmt(hover.pop)}%</b> chance</span>
             <span><b>{fmtIn(hover.qpf)} in</b> precip</span>
             <span><b>{fmt(hover.wind)} mph</b> {compass(hover.dir)} wind</span>
@@ -150,7 +170,7 @@ export default function ForecastCharts({ rows, timeZone }) {
           className="viz-svg"
           tabIndex={0}
           role="group"
-          aria-label="Hourly precipitation and wind charts. Use left and right arrow keys to step through hours. The same values are in the hourly table below."
+          aria-label="Hourly temperature, precipitation and wind charts. Use left and right arrow keys to step through hours. The same values are in the hourly table below."
           onPointerDown={(e) => pick(e.clientX)}
           onPointerMove={(e) => pick(e.clientX)}
           onPointerLeave={(e) => e.pointerType === 'mouse' && setIdx(null)}
@@ -158,6 +178,12 @@ export default function ForecastCharts({ rows, timeZone }) {
           onBlur={() => setIdx(null)}
         >
           {/* Panel titles; peak/total annotations right-aligned so they never collide with marks. */}
+          <text x={0} y={L.temp.title} className="ptitle">Temperature (°F)</text>
+          {tempHigh && tempLow && width >= 420 && (
+            <text x={width - PAD_R} y={L.temp.title} className="pnote" textAnchor="end">
+              high {fmt(tempHigh.value)}° · low {fmt(tempLow.value)}°
+            </text>
+          )}
           <text x={0} y={L.pop.title} className="ptitle">Chance of precipitation</text>
           {popPeak && (
             <text x={width - PAD_R} y={L.pop.title} className="pnote" textAnchor="end">
@@ -178,8 +204,37 @@ export default function ForecastCharts({ rows, timeZone }) {
 
           {/* Day boundaries */}
           {localHour.map((h, i) => h === 0 && i > 0 && (
-            <line key={`d${i}`} x1={PAD_L + i * bw} x2={PAD_L + i * bw} y1={L.pop.top} y2={L.wind.bot} className="grid" />
+            <line key={`d${i}`} x1={PAD_L + i * bw} x2={PAD_L + i * bw} y1={L.temp.top} y2={L.wind.bot} className="grid" />
           ))}
+
+          {/* Temperature: air temp line, dashed feels-like, high/low labels */}
+          {[tr.lo, (tr.lo + tr.hi) / 2, tr.hi].map((v, k) => (
+            <g key={`t${k}`}>
+              <line x1={PAD_L} x2={width - PAD_R} y1={yTemp(v)} y2={yTemp(v)} className={k ? 'grid' : 'axis'} />
+              <text x={PAD_L - 6} y={yTemp(v)} className="tick" textAnchor="end" dominantBaseline="middle">{v}°</text>
+            </g>
+          ))}
+          {showFeels && <path d={linePath(feels, xc, yTemp)} className="s2-line feels" />}
+          <path d={linePath(temp, xc, yTemp)} className="s2-line" />
+          {idx == null && [tempHigh, tempLow].map((p, k) => p && (
+            <g key={`hl${k}`}>
+              <circle cx={xc(p.index)} cy={yTemp(p.value)} r={4} className="s2-dot" />
+              <text
+                x={Math.min(width - PAD_R - 10, Math.max(PAD_L + 10, xc(p.index)))}
+                y={yTemp(p.value) + (k ? 17 : -9)}
+                className="dlabel"
+                textAnchor="middle"
+              >
+                {fmt(p.value)}°
+              </text>
+            </g>
+          ))}
+          {showFeels && (
+            <g transform={`translate(128,${L.temp.title - 4})`} className="legend">
+              <line x1={0} x2={14} className="s2-line feels" />
+              <text x={19} y={4}>Feels like</text>
+            </g>
+          )}
 
           {/* Chance of precipitation: line + 10% wash */}
           {yTicks(L.pop, 100, yPop, (v) => `${v}%`)}
@@ -237,7 +292,8 @@ export default function ForecastCharts({ rows, timeZone }) {
           {/* Crosshair + hover dots */}
           {hover && (
             <g pointerEvents="none">
-              <line x1={xc(idx)} x2={xc(idx)} y1={L.pop.top} y2={L.wind.bot} className="crosshair" />
+              <line x1={xc(idx)} x2={xc(idx)} y1={L.temp.top} y2={L.wind.bot} className="crosshair" />
+              {hover.temp != null && <circle cx={xc(idx)} cy={yTemp(hover.temp)} r={4} className="s2-dot" />}
               {hover.pop != null && <circle cx={xc(idx)} cy={yPop(hover.pop)} r={4} className="s1-dot" />}
               {hover.gust != null && <circle cx={xc(idx)} cy={yWind(hover.gust)} r={4} className="s2-dot" />}
               {hover.wind != null && <circle cx={xc(idx)} cy={yWind(hover.wind)} r={4} className="s1-dot" />}

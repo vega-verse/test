@@ -6,7 +6,7 @@ import ModelAgreement from './ModelAgreement.jsx'
 // Leaflet is only downloaded when the map tab is opened.
 const RadarMap = lazy(() => import('./RadarMap.jsx'))
 import { compass, fmt, fmtIn } from './format.js'
-import { HOUR, accumulateHourly, hourBuckets, maxWithIndex, periodsInWindow, sampleHourly, sum, toImperial } from './timeseries.js'
+import { HOUR, accumulateHourly, hourBuckets, maxWithIndex, minWithIndex, periodsInWindow, sampleHourly, sum, toImperial } from './timeseries.js'
 
 const VIEWS = { forecast: 'Forecast', map: 'Radar map' }
 const initialView = () => (new URLSearchParams(window.location.search).get('view') === 'map' ? 'map' : 'forecast')
@@ -16,7 +16,7 @@ function initialCoords() {
   return { lat: q.get('lat') ?? '', lon: q.get('lon') ?? '' }
 }
 
-/** Turn raw gridpoint layers into 24 hourly rows plus window totals, in mph / inches. */
+/** Turn raw gridpoint layers into 24 hourly rows plus window totals, in °F / mph / inches. */
 function buildForecast(data) {
   const { grid } = data
   const hours = hourBuckets()
@@ -32,12 +32,18 @@ function buildForecast(data) {
   const wind = imp('windSpeed', sampleHourly(grid.windSpeed, hours))
   const gust = imp('windGust', sampleHourly(grid.windGust, hours))
   const dir = sampleHourly(grid.windDirection, hours)
+  const temp = imp('temperature', sampleHourly(grid.temperature, hours))
+  const feels = imp('apparentTemperature', sampleHourly(grid.apparentTemperature, hours))
+  const dew = imp('dewpoint', sampleHourly(grid.dewpoint, hours))
 
   const textByHour = new Map(data.hourly.map((p) => [Date.parse(p.startTime), p.shortForecast]))
 
   const rows = hours.map((t, i) => ({
     t,
     text: textByHour.get(t) ?? '',
+    temp: temp[i],
+    feels: feels[i],
+    dew: dew[i],
     pop: pop[i],
     qpf: qpf[i],
     snow: snow[i],
@@ -57,6 +63,8 @@ function buildForecast(data) {
     rows,
     qpfPeriods,
     totals: {
+      high: maxWithIndex(temp),
+      low: minWithIndex(temp),
       qpf: sum(qpf),
       snow: sum(snow),
       ice: sum(ice),
@@ -140,7 +148,7 @@ export default function App() {
     <main>
       <header>
         <div>
-          <h1>24-Hour Precipitation &amp; Wind Forecast</h1>
+          <h1>24-Hour Temperature, Precipitation &amp; Wind Forecast</h1>
           <p className="sub">NOAA / National Weather Service gridded forecast for any point in the continental US</p>
         </div>
         <button type="button" className="secondary theme-toggle" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
@@ -242,6 +250,8 @@ export function Forecast({ data, lat, lon, fetchedAt, onRefresh }) {
       )}
 
       <div className="cards">
+        <Card label="High" value={`${fmt(totals.high?.value)}°F`} note={at(totals.high)} />
+        <Card label="Low" value={`${fmt(totals.low?.value)}°F`} note={at(totals.low)} />
         <Card label="Total precipitation" value={`${fmtIn(totals.qpf)} in`} />
         <Card label="Peak chance of precip" value={`${fmt(totals.pop?.value)}%`} note={at(totals.pop)} />
         <Card label="Max sustained wind" value={`${fmt(totals.wind?.value)} mph`} note={at(totals.wind)} />
@@ -267,6 +277,9 @@ export function Forecast({ data, lat, lon, fetchedAt, onRefresh }) {
             <tr>
               <th>Time</th>
               <th>Conditions</th>
+              <th>Temp (°F)</th>
+              <th>Feels like</th>
+              <th>Dew point</th>
               <th>Precip chance</th>
               <th>Precip (in)*</th>
               <th>Wind (mph)</th>
@@ -279,6 +292,9 @@ export function Forecast({ data, lat, lon, fetchedAt, onRefresh }) {
               <tr key={r.t} className={(r.pop ?? 0) >= 50 || (r.gust ?? 0) >= 30 ? 'hi' : ''}>
                 <td>{hourFmt.format(r.t)}</td>
                 <td className="text">{r.text}</td>
+                <td>{fmt(r.temp)}°</td>
+                <td>{fmt(r.feels)}°</td>
+                <td>{fmt(r.dew)}°</td>
                 <td>
                   <div className="pop">
                     <span style={{ width: `${r.pop ?? 0}%` }} />
@@ -333,10 +349,11 @@ function Observation({ obs, fmt: dateFmt }) {
   const wind = v(obs.windSpeed)
   const gust = v(obs.windGust)
   const precip = v(obs.precipitationLastHour)
+  const temp = v(obs.temperature)
   return (
     <p className="obs">
       <strong>Latest observation</strong> at {obs.station.name} ({obs.station.id}), {dateFmt.format(Date.parse(obs.timestamp))}:{' '}
-      {obs.textDescription || 'n/a'} · wind {wind == null ? '—' : `${compass(obs.windDirection?.value)} ${wind.toFixed(0)} mph`}
+      {obs.textDescription || 'n/a'} · {temp == null ? '—' : `${temp.toFixed(0)}°F`} · wind {wind == null ? '—' : `${compass(obs.windDirection?.value)} ${wind.toFixed(0)} mph`}
       {gust != null && `, gusting ${gust.toFixed(0)}`} · precip last hour {precip == null ? '—' : `${precip.toFixed(2)} in`}
     </p>
   )

@@ -16,7 +16,7 @@
   --axis: #383835;
   --border: rgba(255, 255, 255, 0.1);
   --s1: #3987e5; /* sustained wind, precip */
-  --s2: #d95926; /* gusts */
+  --s2: #d95926; /* gusts, temperature */
   --accent: #3987e5;
   --critical: #d03b3b;
   --warning: #fab219;
@@ -103,6 +103,7 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .viz-svg .s1-line, .viz-svg .s2-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .viz-svg .s1-line { stroke: var(--s1); }
 .viz-svg .s2-line { stroke: var(--s2); }
+.viz-svg .s2-line.feels { stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.7; }
 .viz-svg .s1-area { fill: var(--s1); fill-opacity: 0.1; }
 .viz-svg .s1-fill { fill: var(--s1); transition: fill-opacity 0.1s; }
 .viz-svg .s1-fill.dim { fill-opacity: 0.45; }
